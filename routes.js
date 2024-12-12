@@ -87,7 +87,7 @@ const adverse_weather_performance = async function (req, res) {
           WHEN EXISTS (
             SELECT 1
             FROM CachedWindyGames wg
-            WHERE CAST(ws.season AS INTEGER) = wg.season AND CAST(ws.week AS INTEGER) = wg.week AND wg.wind_speed > ${wind_speed}
+            WHERE CAST(ws.season AS INTEGER) = wg.season AND CAST(ws.week AS INTEGER) = wg.week AND wg.wind_speed > ${windSpeed}
           ) THEN 'Windy'
           ELSE 'Normal'
         END AS Condition
