@@ -1,0 +1,10 @@
+{
+  "rds_host": "database-1.cifz1raqzdqf.us-east-1.rds.amazonaws.com",
+  "rds_port": "5432",
+  "rds_user": "cis450semproj",
+  "rds_password": "#mjjbaatp!",
+  "rds_db": "postgres",
+  "server_host": "localhost",
+  "server_port": "8080"
+}
+
