@@ -31,7 +31,7 @@ app.get('/injury_resilience/:position', routes.injury_resilience);
 // Route 9
 app.get('/player_performance_tiers/:position', routes.player_performance_tier);
 // Route 10
-app.get('/injury_followup_probability/:min_seasons', routes.injury_followup_probability);
+app.get('/injury_followup_probability/:windowNumber', routes.injury_followup_probability);
  
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
