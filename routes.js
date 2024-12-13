@@ -543,115 +543,101 @@ if (err) {
 );
 };
 
-// Route 10: GET /injury_followup_probability/:min_seasons
+// Route 10: GET /injury_followup_probability/:number
 const injury_followup_probability = async function (req, res) {
-  const minSeasons = req.params.min_seasons;
+  const windowNumber = req.params.min_seasons;
 
   connection.query(`
-
-      CREATE INDEX IF NOT EXISTS idx_week ON injuries (Week)
-      WHERE Week IS NOT NULL;
-
-      CREATE INDEX IF NOT EXISTS idx_weather_week_season ON weather (weather, week, season)
-      WHERE weather = 'Fog' AND week ~ '^[0-9]+$';
-
-      CREATE INDEX IF NOT EXISTS idx_player_season_week_game ON injuries (player, Season, Week, game_status)
-      WHERE game_status = 'Out';
-
-      CREATE INDEX IF NOT EXISTS idx_name_position ON players (name, position);
-
-      CREATE INDEX IF NOT EXISTS idx_foggy_conditions ON foggy_conditions (season, week);
-
-      WITH RECURSIVE mover AS (
-        SELECT 1 as n
+    WITH RECURSIVE mover AS (
+        SELECT 1 AS n
         UNION ALL
-        SELECT n + 1 FROM mover WHERE n < 6
-      ),
-      weekslookat AS (
-        SELECT n - 2 as acceptablerange
+        SELECT n + 1 FROM mover WHERE n < ${windowNumber}
+    ),
+    weekslookat AS (
+        SELECT
+            n - 2 AS acceptablerange
         FROM mover
         WHERE n <= 5
-      ),
-      injurytimes AS (
+    ),
+    injurytimes AS (
         SELECT DISTINCT  
-          i.player,
-          i.Season::text as season,
-          i.Week,
-          EXISTS (
-            SELECT 1
-            FROM mv_foggy_conditions fc
-            CROSS JOIN weekslookat ranging  
-            WHERE fc.season = i.Season::text
-            AND CAST(fc.week AS INTEGER) = i.Week + ranging.acceptablerange
-            AND (i.Week + ranging.acceptablerange) >= 1
-            AND (i.Week + ranging.acceptablerange) <= 18
-          ) as rainytime
+            i.player,
+            i.Season::text AS season,
+            i.Week,
+            EXISTS (
+                SELECT 1
+                FROM mv_foggy_conditions fc
+                CROSS JOIN weekslookat ranging  
+                WHERE fc.season = i.Season::text
+                AND CAST(fc.week AS INTEGER) = i.Week + ranging.acceptablerange
+                AND (i.Week + ranging.acceptablerange) >= 1
+                AND (i.Week + ranging.acceptablerange) <= 18
+            ) AS rainytime
         FROM injuries i
         WHERE i.Week IS NOT NULL
-      ),
-      valid_injuries AS (
+    ),
+    valid_injuries AS (
         SELECT
-          i.player,
-          i.Season::text as season,
-          i.Week
+            i.player,
+            i.Season::text AS season,
+            i.Week
         FROM injuries i
         JOIN injurytimes it ON
-          i.player = it.player AND
-          i.Season::text = it.season AND
-          i.Week = it.Week
+            i.player = it.player AND
+            i.Season::text = it.season AND
+            i.Week = it.Week
         WHERE i.game_status = 'Out'
         AND it.rainytime = TRUE
-      ),
-      playerswithi AS (
+    ),
+    playerswithi AS (
         SELECT
-          i.player,
-          COUNT(DISTINCT i.Season) AS injury_num,
-          STRING_AGG(DISTINCT p.position, ',' ORDER BY p.position) as positions
+            i.player,
+            COUNT(DISTINCT i.Season) AS injury_num,
+            STRING_AGG(DISTINCT p.position, ',' ORDER BY p.position) AS positions
         FROM valid_injuries i
         LEFT JOIN players p ON i.player = p.name
         GROUP BY i.player
-        HAVING COUNT(DISTINCT i.Season) >= ${minSeasons}
-      ),
-      following_injuries AS (
+    ),
+    following_injuries AS (
         SELECT
-          i1.player,
-          COUNT(DISTINCT i2.Season) AS following_injury_num
+            i1.player,
+            COUNT(DISTINCT i2.Season) AS following_injury_num
         FROM valid_injuries i1
         JOIN valid_injuries i2 ON i1.player = i2.player
-          AND (i2.season > i1.season
-            OR (i2.season = i1.season AND i2.Week > i1.Week))
+            AND (i2.season > i1.season
+                OR (i2.season = i1.season AND i2.Week > i1.Week))
         GROUP BY i1.player
-      ),
-      prob_calcs AS (
+    ),
+    prob_calcs AS (
         SELECT
-          (SELECT COUNT(DISTINCT name) FROM players) AS player_number,
-          (
-            SELECT COUNT(*)
-            FROM playerswithi pi
-            WHERE injury_num > 0
-            AND EXISTS (
-              SELECT 1
-              FROM mv_foggy_conditions ws
-              WHERE ws.season IN (
-                SELECT DISTINCT season
-                FROM valid_injuries vi
-                WHERE vi.player = pi.player
-              )
-            )
-          ) AS injured_number,
-          (
-            SELECT COUNT(*)
-            FROM following_injuries
-            WHERE following_injury_num > 0
-          ) AS injured_again
-      )
-      SELECT
+            (SELECT COUNT(DISTINCT name) FROM players) AS player_number,
+            (
+                SELECT COUNT(*)
+                FROM playerswithi pi
+                WHERE injury_num > 0
+                AND EXISTS (
+                    SELECT 1
+                    FROM mv_foggy_conditions ws
+                    WHERE ws.season IN (
+                        SELECT DISTINCT season
+                        FROM valid_injuries vi
+                        WHERE vi.player = pi.player
+                    )
+                )
+            ) AS injured_number,
+            (
+                SELECT COUNT(*)
+                FROM following_injuries
+                WHERE following_injury_num > 0
+            ) AS injured_again
+    )
+    SELECT
         player_number,
         injured_number,
         injured_again,
         CAST(injured_number AS FLOAT) / NULLIF(player_number, 0) AS injury_prob,
         CAST(injured_again AS FLOAT) / NULLIF(injured_number, 0) AS another_injury_prob
-      FROM prob_calcs;
+    FROM prob_calcs;
  `,
  (err, data) => {
    if (err) {
