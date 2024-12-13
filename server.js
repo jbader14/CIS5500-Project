@@ -19,7 +19,7 @@ app.get('/top_players/:num', routes.top_players);
 // Route 3
 app.get('/adverse_weather_performance/:wind_speed/:limit', routes.adverse_weather_performance);
 // Route 4
-app.get('/injury_probability/:season', routes.injury_probability);
+app.get('/adverse_weather_team_comp/:teams', routes.adverse_weather_team_comp;
 // Route 5
 app.get('/cold_weather_qbs/:min_games', routes.cold_weather_qbs);
 // Route 6
