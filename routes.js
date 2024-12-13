@@ -139,9 +139,9 @@ const adverse_weather_performance = async function (req, res) {
   };
 
 // Route 4: GET /adverse_weather_team_comp/:teams
-const injury_probability = async function (req, res) {
+const adverse_weather_team_comp = async function (req, res) {
   const teams = req.params.teams; 
-  
+
     // Convert into an team names array
     const teamList = teams.split(',');
     
@@ -669,7 +669,7 @@ module.exports = {
   avg_passing_yds_weather,
   top_players,
   adverse_weather_performance,
-  injury_probability,
+  adverse_weather_team_comp,
   cold_weather_qbs,
   goal_line_backs,
   consistent_scorers,
