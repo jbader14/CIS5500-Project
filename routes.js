@@ -138,79 +138,93 @@ const adverse_weather_performance = async function (req, res) {
   );
   };
 
-// Route 4: GET /injury_probability/:season
+// Route 4: GET /adverse_weather_team_comp/:teams
 const injury_probability = async function (req, res) {
-  const season = req.params.season; 
+  const teams = req.params.teams; 
+  
+    // Convert into an team names array
+    const teamList = teams.split(',');
+    
+    // Wrap single quotes around teams for IN clause
+    const teamsCompare = teamList.map(team => `'${team}'`).join(',');
 
   connection.query(`
-SELECT
-      (SELECT COUNT(DISTINCT name) FROM players) AS player_number,
-       (SELECT COUNT(*)
-        FROM (
-            SELECT player, COUNT(DISTINCT season) AS injury_seasons
-            FROM injuries
-            WHERE game_status = 'Out' AND (${
-                season !== 'ALL' ? `season = '${season}'` : `true`
-            })
-            GROUP BY player
-        ) AS injured_players
-        WHERE injury_seasons > 0
-       ) AS injured_number,
-       (SELECT COUNT(*)
-        FROM (
-            SELECT ws.name, COUNT(*) AS high_performance_count
-            FROM weekly_stats ws
-            JOIN injuries i ON ws.name = i.player
-                AND ws.season = i.season
-                AND ws.week > i.week
-            WHERE ws.fantasy_points > 15 AND (${
-                season !== 'ALL' ? `ws.season = '${season}'` : `true`
-            })
-            GROUP BY ws.name
-        ) AS high_performance_games
-        WHERE high_performance_count > 0
-       ) AS high_performance_after_injury,
-       CAST(
-           (SELECT COUNT(*)
-            FROM (
-                SELECT player, COUNT(DISTINCT season) AS injury_seasons
-                FROM injuries
-                WHERE game_status = 'Out' AND (${
-                    season !== 'ALL' ? `season = '${season}'` : `true`
-                })
-                GROUP BY player
-            ) AS injured_players
-            WHERE injury_seasons > 0
-           ) AS FLOAT
-       ) /
-       (SELECT COUNT(DISTINCT name) FROM players) AS injury_prob,
-       CAST(
-           (SELECT COUNT(*)
-            FROM (
-                SELECT ws.name, COUNT(*) AS high_performance_count
-                FROM weekly_stats ws
-                JOIN injuries i ON ws.name = i.player
-                    AND ws.season = i.season
-                    AND ws.week > i.week
-                WHERE ws.fantasy_points > 15 AND (${
-                    season !== 'ALL' ? `ws.season = '${season}'` : `true`
-                })
-                GROUP BY ws.name
-            ) AS high_performance_games
-            WHERE high_performance_count > 0
-           ) AS FLOAT
-       ) /
-       (SELECT COUNT(*)
-        FROM (
-            SELECT player, COUNT(DISTINCT season) AS injury_seasons
-            FROM injuries
-            WHERE game_status = 'Out' AND (${
-                season !== 'ALL' ? `season = '${season}'` : `true`
-            })
-            GROUP BY player
-        ) AS injured_players
-        WHERE injury_seasons > 0
-       ) AS high_performance_prob;
+  WITH AdverseWeather AS (
+    SELECT DISTINCT
+      CAST(w.season AS INTEGER) AS season,
+      CAST(w.week AS INTEGER) AS week,
+      w."Home Team",
+      w."Away Team",
+      CASE
+        WHEN w.weather IN ('Rain', 'Snow') THEN 'Rain/Snow'
+        WHEN w.temperature SIMILAR TO '[0-9]+ F' AND CAST(SPLIT_PART(w.temperature, ' ', 1) AS INTEGER) < 40 THEN 'Cold'
+        WHEN w.wind SIMILAR TO '[0-9]+' AND CAST(w.wind AS INTEGER) > 20 THEN 'Windy'
+        ELSE 'Normal'
+      END AS WeatherCondition
+    FROM weather_nfl_all_games_noplayoffs w
+    WHERE w.weather IS NOT NULL
+      AND w.temperature SIMILAR TO '[0-9]+ F'
+      AND w.wind SIMILAR TO '[0-9]+'
+  ),
+  GameResults AS (
+    SELECT
+      CAST(w.season AS INTEGER) AS season,
+      CAST(w.week AS INTEGER) AS week,
+      w."Home Team" AS Team,
+      (w."Home Team Score" - w."Away Team Score") AS Margin,
+      COALESCE(aw.WeatherCondition, 'Normal') AS WeatherCondition
+    FROM weather_nfl_all_games_noplayoffs w
+    LEFT JOIN AdverseWeather aw
+      ON CAST(w.season AS INTEGER) = aw.season
+      AND CAST(w.week AS INTEGER) = aw.week
+      AND w."Home Team" = aw."Home Team"
+    UNION ALL
+    SELECT
+      CAST(w.season AS INTEGER) AS season,
+      CAST(w.week AS INTEGER) AS week,
+      w."Away Team" AS Team,
+      (w."Away Team Score" - w."Home Team Score") AS Margin,
+      COALESCE(aw.WeatherCondition, 'Normal') AS WeatherCondition
+    FROM weather_nfl_all_games_noplayoffs w
+    LEFT JOIN AdverseWeather aw
+      ON CAST(w.season AS INTEGER) = aw.season
+      AND CAST(w.week AS INTEGER) = aw.week
+      AND w."Away Team" = aw."Away Team"
+  ),
+  TeamPerformanceByWeather AS (
+    SELECT
+      gr.Team,
+      gr.WeatherCondition,
+      AVG(gr.Margin) AS AvgMarginOfVictory
+    FROM GameResults gr
+    WHERE gr.Team IN (${teamsCompare})
+    GROUP BY gr.Team, gr.WeatherCondition
+  ),
+  PerformanceComparison AS (
+    SELECT
+      tp.Team,
+      COALESCE(MAX(CASE WHEN tp.WeatherCondition = 'Rain/Snow' THEN tp.AvgMarginOfVictory ELSE NULL END), 0) AS AvgMarginRainSnow,
+      COALESCE(MAX(CASE WHEN tp.WeatherCondition = 'Cold' THEN tp.AvgMarginOfVictory ELSE NULL END), 0) AS AvgMarginCold,
+      COALESCE(MAX(CASE WHEN tp.WeatherCondition = 'Windy' THEN tp.AvgMarginOfVictory ELSE NULL END), 0) AS AvgMarginWindy,
+      COALESCE(MAX(CASE WHEN tp.WeatherCondition = 'Normal' THEN tp.AvgMarginOfVictory ELSE NULL END), 0) AS AvgMarginNormal
+    FROM TeamPerformanceByWeather tp
+    GROUP BY tp.Team
+  )
+  SELECT
+    pc.Team,
+    pc.AvgMarginRainSnow,
+    pc.AvgMarginCold,
+    pc.AvgMarginWindy,
+    pc.AvgMarginNormal,
+    (GREATEST(
+        COALESCE(pc.AvgMarginRainSnow, 0),
+        COALESCE(pc.AvgMarginCold, 0),
+        COALESCE(pc.AvgMarginWindy, 0)
+    ) - pc.AvgMarginNormal) AS PerformanceDifference
+  FROM PerformanceComparison pc
+  WHERE pc.AvgMarginNormal > 0
+  ORDER BY PerformanceDifference DESC
+  LIMIT 5;
     `,
     (err, data) => {
       if (err) {
