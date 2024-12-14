@@ -18,6 +18,21 @@ const connection = new Pool({
 });
 connection.connect((err) => err && console.log(err));
 
+// Creating user databases for security
+connection.query(`
+  CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+  );
+`, (err, result) => {
+  if (err) {
+    console.error('Error creating users table:', err);
+  } else {
+    console.log('Users table created or already exists');
+  }
+});
+
 // Route 1: GET /avg_passing_yds_weather/:season
 // Parameter: season - which particular NFL season we want to analyze
 const avg_passing_yds_weather = async function (req, res) {
@@ -659,6 +674,63 @@ const injury_followup_probability = async function (req, res) {
 );
 };
 
+//To create a new usernmame and password
+const register = async function(req, res) {
+  try {
+    const { username, password } = req.body;
+    const hashedPassword = await passwordHash(password);
+    
+    const query = `
+      INSERT INTO users (username, password)
+      VALUES ($1, $2)
+      RETURNING id, username
+    `;
+    
+    connection.query(query, [username, hashedPassword], (err, data) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Registration failed' });
+      } else {
+        res.json(data.rows[0]);
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+//Logging in to the system
+const login = async function(req, res) {
+  try {
+    const { username, password } = req.body;
+    
+    const query = 'SELECT * FROM users WHERE username = $1';
+    
+    connection.query(query, [username], async (err, data) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Login failed' });
+        return;
+      }
+      
+      const user = data.rows[0];
+      if (!user) {
+        res.status(400).json({ error: 'User not found' });
+        return;
+      }
+      
+      const validPassword = await passwordCheck(password, user.password);
+      if (!validPassword) {
+        res.status(400).json({ error: 'Invalid password' });
+        return;
+      }
+      
+      res.json({ id: user.id, username: user.username });
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 module.exports = {
   avg_passing_yds_weather,
@@ -671,4 +743,6 @@ module.exports = {
   injury_resilience,
   player_performance_tiers,
   injury_followup_probability,
+  register,
+  login
 }
