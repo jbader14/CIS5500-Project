@@ -29,7 +29,7 @@ app.get('/consistent_scorers/:position', routes.consistent_scorers);
 // Route 8
 app.get('/injury_resilience/:position', routes.injury_resilience);
 // Route 9
-app.get('/player_performance_tiers/:position', routes.player_performance_tier);
+app.get('/player_performance_tiers/:position', routes.player_performance_tiers);
 // Route 10
 app.get('/injury_followup_probability/:windowNumber', routes.injury_followup_probability);
  
