@@ -555,7 +555,7 @@ if (err) {
 // Route 10: GET /injury_followup_probability/:number
 // Parameter: number - the window size for looking at fog-related injuries
 const injury_followup_probability = async function (req, res) {
-  const windowNumber = req.params.min_seasons;
+  const windowNumber = req.params.windowNumber;
 
   connection.query(`
     WITH RECURSIVE mover AS (
