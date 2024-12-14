@@ -29,21 +29,7 @@ const passwordCheck = async (password, hashP) => {
   }
 };
 
-const loadSSLCertificates = () => {
-  try {
-    return {
-      key: fs.readFileSync('private-key.pem'),
-      cert: fs.readFileSync('certificate.pem')
-    };
-  } catch (err) {
-    console.error('Error loading SSL certificates:', err.message);
-    console.error('Ensure private-key.pem and certificate.pem exist in the root directory');
-    process.exit(1);
-  }
-};
-
 module.exports = {
   passwordHash,
   passwordCheck,
-  sslOptions: loadSSLCertificates()
 };
