@@ -41,9 +41,9 @@ app.post('/register', routes.register);
 // Login
 app.post('/login', routes.login);
 
-https.createServer(auth.sslOptions, app).listen(443, () => {
-  console.log('Secure server running on port 443');
-});
+//https.createServer(auth.sslOptions, app).listen(443, () => {
+//  console.log('Secure server running on port 443');
+//});
  
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
