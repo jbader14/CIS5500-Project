@@ -12,6 +12,15 @@ app.use(cors({
 
 app.use(express.json());
 
+//Adding a privacy mode for viewing
+const checkPrivacyMode = (req, res, next) => {
+  const isPrivate = req.headers['x-privacy-mode'] === 'true';
+  req.isPrivateMode = isPrivate;
+  next();
+};
+
+app.use(checkPrivacyMode);
+
 // We use express to define our various API endpoints and
 // provide their handlers that we implemented in routes.js
 
