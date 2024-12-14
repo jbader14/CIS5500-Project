@@ -20,6 +20,13 @@ connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /avg_passing_yds_weather/:season
 const avg_passing_yds_weather = async function (req, res) {
+  
+// Query #1 below condenses weather conditions into simple cases (Rainy, Snowy, Clear, etc.)
+
+// It then averages passing yards for quarterbacks who have played games in each of these conditions, joining the weather data and quarterback statistics data
+
+// It ensures the season and week are explicitly casted such that types are matches across datasets
+
 
   const season = req.params.season; 
 
@@ -55,6 +62,9 @@ const avg_passing_yds_weather = async function (req, res) {
 };
 
 // Route 2: GET /top_players/:num
+
+// Query #2 below joins the weekly_stats table with the players table to display the total fantasy points for each player along with their position. The number of displayed results is included as a parameter.
+
 const top_players = async function(req, res) {
   const num = req.params.num;
 
@@ -79,6 +89,18 @@ const top_players = async function(req, res) {
 
 
 // Route 3: GET /adverse_weather_performance/:wind_speed/:limit
+
+// Query #3 below identifies players who excel in games with high wind speeds (e.g., wind > 20). The query calculates the average fantasy points for players in windy games and compares it to their average in normal conditions to identify players who perform better in adverse weather.
+
+// CategorizedGames categorizes games as "Windy" or "Normal" based on the cachedwindygamesfinal materialized view
+
+// PlayerPerformance computes average fantasy points for each player under each condition ("Windy" or "Normal")
+
+// PerformanceComparison compares player performance between "Windy" and "Normal" conditions
+
+// The group-by groups by player to calculate condition-specific averages, helping us return players with better performance in "Windy" games compared to "Normal" games
+
+
 const adverse_weather_performance = async function (req, res) {
   const windSpeed = req.params.wind_speed;
   const limit = req.params.limit; 
@@ -139,6 +161,18 @@ const adverse_weather_performance = async function (req, res) {
   };
 
 // Route 4: GET /adverse_weather_team_comp/:teams
+
+// Query #4 identifies teams that perform well in games with adverse weather conditions. Specifically, it returns the teams and their average margin of victory in snowy, cold, and windy conditions, respectively. It then compares their average margin of victory in “normal conditions” to the adverse weather condition where the performance difference is maximized.
+
+// AdverseWeather categorizes games by weather conditions (Rain/Snow, Cold, Windy, Normal)
+
+// GameResults computes the margin of victory for home and away teams, and associate weather conditions
+
+// TeamPerformanceByWeather calculates the average margin of victory by team and weather condition
+
+// Performance Comparison compares team performance across weather conditions
+
+
 const adverse_weather_team_comp = async function (req, res) {
   const teams = req.params.teams; 
 
