@@ -19,6 +19,7 @@ const connection = new Pool({
 connection.connect((err) => err && console.log(err));
 
 // Route 1: GET /avg_passing_yds_weather/:season
+// Parameter: season - which particular NFL season we want to analyze
 const avg_passing_yds_weather = async function (req, res) {
 
   const season = req.params.season; 
@@ -55,6 +56,7 @@ const avg_passing_yds_weather = async function (req, res) {
 };
 
 // Route 2: GET /top_players/:num
+// Parameter: num - the number of top players we want the query to return
 const top_players = async function(req, res) {
   const num = req.params.num;
 
@@ -79,6 +81,7 @@ const top_players = async function(req, res) {
 
 
 // Route 3: GET /adverse_weather_performance/:wind_speed/:limit
+// Parameters: wind_speed - the minimum wind speed to look at, limit - how many players to return
 const adverse_weather_performance = async function (req, res) {
   const windSpeed = req.params.wind_speed;
   const limit = req.params.limit; 
@@ -139,6 +142,7 @@ const adverse_weather_performance = async function (req, res) {
   };
 
 // Route 4: GET /adverse_weather_team_comp/:teams
+// Parameter: team - list of team abbreviations
 const adverse_weather_team_comp = async function (req, res) {
   const teams = req.params.teams; 
 
@@ -238,6 +242,7 @@ const adverse_weather_team_comp = async function (req, res) {
   };
 
 // Route 5: GET /cold_weather_qbs/:min_games
+// Parameter min_games - no. games played in cold weather
 const cold_weather_qbs = async function (req, res) {
   const minGames = req.params.min_games;
 
@@ -278,6 +283,7 @@ const cold_weather_qbs = async function (req, res) {
   };
 
 // Route 6: GET /goal_line_backs/:min_tds/:min_games
+//Parameters: min_tds - minimum number of touchdowns, min_games - minimum played games
 const goal_line_backs = async function (req, res) {
   const minTds = req.params.min_tds;
   const minGames = req.params.min_games;
@@ -312,6 +318,7 @@ const goal_line_backs = async function (req, res) {
   };
 
 // Route 7: GET /consistent_scorers/:position
+// Parameter: position - the position we specifically want to analyze
 const consistent_scorers = async function (req, res) {
   const position = req.query.position;
   
@@ -346,6 +353,7 @@ const consistent_scorers = async function (req, res) {
 };
 
 // Route 8: GET /injury_resilience/:position
+//Parameter: position - the player position we want to filter by
 const injury_resilience = async function (req, res) {
   const position = req.params.position;
 
@@ -381,6 +389,7 @@ const injury_resilience = async function (req, res) {
 };
 
 // Route 9: GET /player_performance_tiers/:position
+// Parameter: position - the specific position we want to look at
 const player_performance_tiers = async function (req, res) {
   const position = req.params.position;
 
@@ -544,20 +553,20 @@ if (err) {
 };
 
 // Route 10: GET /injury_followup_probability/:number
+// Parameter: number - the window size for looking at fog-related injuries
 const injury_followup_probability = async function (req, res) {
   const windowNumber = req.params.min_seasons;
 
   connection.query(`
     WITH RECURSIVE mover AS (
-        SELECT 1 AS n
+        SELECT -${windowNumber} AS n
         UNION ALL
         SELECT n + 1 FROM mover WHERE n < ${windowNumber}
     ),
     weekslookat AS (
         SELECT
-            n - 2 AS acceptablerange
+            n AS acceptablerange
         FROM mover
-        WHERE n <= 5
     ),
     injurytimes AS (
         SELECT DISTINCT  
