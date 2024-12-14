@@ -40,10 +40,6 @@ app.get('/injury_followup_probability/:windowNumber', routes.injury_followup_pro
 app.post('/register', routes.register);
 // Login
 app.post('/login', routes.login);
-// SSL
-app.get('/test-ssl', (req, res) => {
-  res.json({ message: 'SSL works' });
-});
 
 https.createServer(auth.sslOptions, app).listen(443, () => {
   console.log('Secure server running on port 443');
