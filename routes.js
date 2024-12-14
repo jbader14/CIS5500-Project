@@ -75,26 +75,31 @@ const avg_passing_yds_weather = async function (req, res) {
 const top_players = async function(req, res) {
   const num = req.params.num;
   const query = req.isPrivateMode ? 
+    // Private mode query
+    `SELECT ws.name, p.position, ROUND(SUM(ws.fantasy_points)) AS total_fantasy_points
+     FROM weekly_stats ws
+     JOIN players p ON ws.name = p.name
+     GROUP BY ws.name, p.position
+     ORDER BY total_fantasy_points DESC
+     LIMIT $1`
+    : 
+    // Non-private mode query
+    `SELECT CONCAT('Anonymous Player ', ROW_NUMBER() OVER (ORDER BY SUM(ws.fantasy_points) DESC)) as name, p.position, SUM(ws.fantasy_points) AS total_fantasy_points
+     FROM weekly_stats ws
+     JOIN players p ON ws.name = p.name
+     GROUP BY ws.name, p.position
+     ORDER BY total_fantasy_points DESC
+     LIMIT $1`;
 
-  connection.query(`
-      SELECT ws.name, p.position, SUM(ws.fantasy_points) AS total_fantasy_points
-      FROM weekly_stats ws
-      JOIN players p ON ws.name = p.name
-      GROUP BY ws.name, p.position
-      ORDER BY total_fantasy_points DESC
-      LIMIT '${num}'
-    `,
-    (err, data) => {
-      if (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Error: Query Failure.' });
-      } else {
-        res.json(data.rows); 
-      }
+  connection.query(query, [num], (err, data) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed' });
+    } else {
+      res.json(data.rows);
     }
-  );
+  });
 };
-
 
 // Route 3: GET /adverse_weather_performance/:wind_speed/:limit
 // Parameters: wind_speed - the minimum wind speed to look at, limit - how many players to return
