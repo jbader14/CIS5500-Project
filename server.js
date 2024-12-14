@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const config = require('./config');
 const routes = require('./routes');
-const https = require('https');
 const auth = require('./auth');
 
 const app = express();
@@ -49,10 +48,6 @@ app.get('/injury_followup_probability/:windowNumber', routes.injury_followup_pro
 app.post('/register', routes.register);
 // Login
 app.post('/login', routes.login);
-
-//https.createServer(auth.sslOptions, app).listen(443, () => {
-//  console.log('Secure server running on port 443');
-//});
  
 app.listen(config.server_port, () => {
   console.log(`Server running at http://${config.server_host}:${config.server_port}/`)
