@@ -74,6 +74,7 @@ const avg_passing_yds_weather = async function (req, res) {
 // Parameter: num - the number of top players we want the query to return
 const top_players = async function(req, res) {
   const num = req.params.num;
+  const query = req.isPrivateMode ? 
 
   connection.query(`
       SELECT ws.name, p.position, SUM(ws.fantasy_points) AS total_fantasy_points
